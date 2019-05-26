@@ -1,0 +1,16 @@
+{
+  "name": "multiupload",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "server": "nodemon server.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "dropzone": "^5.5.1",
+    "express": "^4.16.4",
+    "nodemon": "^1.19.0"
+  }
+}
