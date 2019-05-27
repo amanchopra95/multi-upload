@@ -10,6 +10,11 @@ app.get('/', (req, res) => {
     return res.sendFile("index.html");
 })
 
+app.post('/', (req, res) => {
+    console.log(req,res);
+    return res.json(req);
+})
+
 app.listen(3030, () => {
     console.log("Uploading at the port 3030"); 
 })

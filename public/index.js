@@ -7,20 +7,14 @@ files.addEventListener('change', (event) => {
     getDroppedOrSelectedFiles(event)
         .then((files) => {
             console.info("[Change Event]");
-        })
-    
-    // Converting FileList object into a directory structure
-    
-    event.preventDefault();
-})
-
-files.addEventListener('ondrop', (event, DataTransfer) => {
-    console.log(DataTransfer, event);   
-})
-
-const dropHandler = (event) => {
-    getDroppedOrSelectedFiles(event)
-        .then((files) => {
+            console.log("[Files Droppped]", files);
+            if (window.Worker) {
+                const myWorker = new Worker("worker.js");
+                files.map((file) => {
+                    myWorker.postMessage(file.fileObject);
+                    console.log("[Message Posted To Worker]");
+                })
+            }
             let tree = treeify(files);
             /* files.map((file) => {
                 let item = document.createElement('li');
@@ -52,7 +46,62 @@ const dropHandler = (event) => {
             }
 
             showTree(tree);
-            console.log("Files dropped", tree);
+            console.log("[Folder Structure]", tree);
+        })
+    
+    // Converting FileList object into a directory structure
+    
+    event.preventDefault();
+})
+
+/*files.addEventListener('ondrop', (event, DataTransfer) => {
+    console.log(DataTransfer, event);   
+})*/
+
+const dropHandler = (event) => {
+    getDroppedOrSelectedFiles(event)
+        .then((files) => {
+            console.log("[Files Droppped]", files);
+            if (window.Worker) {
+                const myWorker = new Worker("worker.js");
+                myWorker.postMessage(files);
+                /*files.map((file) => {
+                    myWorker.postMessage(file.fileObject);
+                    console.log("[Message Posted To Worker]");
+                })*/
+            }
+            let tree = treeify(files);
+            /* files.map((file) => {
+                let item = document.createElement('li');
+                item.textContent = file.fullPath.fullPath;
+                listing.appendChild(item);
+            }) */
+            function showTree(tree) {
+
+                tree.map((list) => {
+                    let item = document.createElement('li');
+                    item.textContent = list.fileName;
+                    listing.appendChild(item);
+                    if(list.isDirectory) {
+                        if (list.children) {
+                            list.children.forEach((child) => {
+                                if (child.isDirectory) {
+                                    showTree(child.children)
+                                }
+                                let itemChild = document.createElement('ul');
+                                let level = document.createElement('li');
+                                level.textContent = child.fileName;
+                                itemChild.appendChild(level);
+                                item.appendChild(itemChild);
+
+                            })
+                        }
+                    } 
+                })
+            }
+
+            //showTree(tree);
+            console.log("[Folder Structure]", tree);
         })
 }
 
@@ -91,9 +140,9 @@ const traverseDirectory = (entry) => {
 }
 
 const packageFile = (file, entry) => {
-    file =  {
+    object =  {
         fileObject: file,
-        fullPath: entry,
+        fullPath: entry.fullPath,
         lastModified: file.lastModified,
         lastModifiedDate: file.lastModifiedDate,
         name: file.name,
@@ -101,7 +150,7 @@ const packageFile = (file, entry) => {
         type: file.type,
         webkitRelativePath: file.webkitRelativePath
     }
-    return file;
+    return object;
 }
 
 const getFile = (entry) => {
@@ -185,7 +234,7 @@ function treeify(arr) {
     var tree = {}
 
     function addnode(obj) {
-        var splitpath = obj.fullPath.fullPath.replace(/^\/|\/$/g, "").split('/');
+        var splitpath = obj.fullPath ? obj.fullPath.replace(/^\/|\/$/g, "").split('/') : obj.webkitRelativePath.replace(/^\/|\/$/g, "").split('/');
         var ptr = tree;
         for (let i = 0; i < splitpath.length; i++) {
             let node = {
