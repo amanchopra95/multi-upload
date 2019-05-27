@@ -27,6 +27,31 @@ const dropHandler = (event) => {
                 item.textContent = file.fullPath.fullPath;
                 listing.appendChild(item);
             }) */
+            function showTree(tree) {
+
+                tree.map((list) => {
+                    let item = document.createElement('li');
+                    item.textContent = list.fileName;
+                    listing.appendChild(item);
+                    if(list.isDirectory) {
+                        if (list.children) {
+                            list.children.forEach((child) => {
+                                if (child.isDirectory) {
+                                    showTree(child.children)
+                                }
+                                let itemChild = document.createElement('ul');
+                                let level = document.createElement('li');
+                                level.textContent = child.fileName;
+                                itemChild.appendChild(level);
+                                item.appendChild(itemChild);
+
+                            })
+                        }
+                    } 
+                })
+            }
+
+            showTree(tree);
             console.log("Files dropped", tree);
         })
 }
@@ -51,10 +76,8 @@ const traverseDirectory = (entry) => {
                 } else {
                     iterationAttempts.push(Promise.all(batchEntries.map((batchEntry) => {
                         if (batchEntry.isDirectory) {
-                            console.log(batchEntry);
                             return traverseDirectory(batchEntry);
                         }
-                        console.log(batchEntry);
                         return Promise.resolve(batchEntry);
                     })));
 
@@ -82,7 +105,6 @@ const packageFile = (file, entry) => {
 }
 
 const getFile = (entry) => {
-    console.log(entry);
     return new Promise((resolve) => {
         entry.file((file) => {
             resolve(packageFile(file, entry));
