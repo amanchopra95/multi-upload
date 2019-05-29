@@ -1,32 +1,34 @@
 const files = document.querySelector('input');
 const listing = document.querySelector('ul');
 const dropzone = document.querySelector('#dropzone');
+const myWorker = new Worker("worker.js");
+
+const FILES_TO_IGNORE = [
+    '.DS_Store', // OSX indexing file
+    'Thumbs.db' // Windows indexing file
+];
 
 files.addEventListener('change', (event) => {
     
     getDroppedOrSelectedFiles(event)
         .then((files) => {
             console.info("[Change Event]");
-            console.log("[Files Droppped]", files);
-            if (window.Worker) {
-                const myWorker = new Worker("worker.js");
-                files.map((file) => {
-                    myWorker.postMessage(file.fileObject);
-                    console.log("[Message Posted To Worker]");
-                })
-            }
+            files.forEach((file) => {
+                if (file.fullPath.split('/').length === 2 && file.fullPath.split('/')[1].match(/\.(png|svg|jpg|jpeg|gif)$/)) {
+                    file.isFolder = false;
+                } else {
+                    file.isFolder = true;
+                }
+            })
+            myWorker.postMessage({
+                files,
+                events: "Drag"
+            });
             let tree = treeify(files);
-            /* files.map((file) => {
-                let item = document.createElement('li');
-                item.textContent = file.fullPath.fullPath;
-                listing.appendChild(item);
-            }) */
             function showTree(tree) {
-
                 tree.map((list) => {
                     let item = document.createElement('li');
                     item.textContent = list.fileName;
-                    listing.appendChild(item);
                     if(list.isDirectory) {
                         if (list.children) {
                             list.children.forEach((child) => {
@@ -38,15 +40,15 @@ files.addEventListener('change', (event) => {
                                 level.textContent = child.fileName;
                                 itemChild.appendChild(level);
                                 item.appendChild(itemChild);
-
                             })
                         }
-                    } 
+                    } else {
+                        listing.appendChild(item);
+                    }  
                 })
             }
 
             showTree(tree);
-            console.log("[Folder Structure]", tree);
         })
     
     // Converting FileList object into a directory structure
@@ -54,30 +56,33 @@ files.addEventListener('change', (event) => {
     event.preventDefault();
 })
 
-/*files.addEventListener('ondrop', (event, DataTransfer) => {
-    console.log(DataTransfer, event);   
-})*/
+    
+myWorker.addEventListener('message', (e) => {
+    console.log(e);
+})
+
+files.addEventListener('ondrop', (event, DataTransfer) => {
+    dropHandler(event);
+    event.preventDefault(); 
+})
+
+const ignoreFiles = (file) => {
+    return FILES_TO_IGNORE.indexOf(file.name) >= 0;
+}
 
 const dropHandler = (event) => {
     getDroppedOrSelectedFiles(event)
         .then((files) => {
-            console.log("[Files Droppped]", files);
-            if (window.Worker) {
-                const myWorker = new Worker("worker.js");
-                myWorker.postMessage(files);
-                /*files.map((file) => {
-                    myWorker.postMessage(file.fileObject);
-                    console.log("[Message Posted To Worker]");
-                })*/
-            }
+            files.forEach((file) => {
+                if (file.fullPath.split('/').length === 2 && file.fullPath.split('/')[1].match(/\.(png|svg|jpg|jpeg|gif)$/)) {
+                    file.isFolder = false;
+                } else {
+                    file.isFolder = true;
+                }
+            })
+            myWorker.postMessage({files, events: "Drag"});
             let tree = treeify(files);
-            /* files.map((file) => {
-                let item = document.createElement('li');
-                item.textContent = file.fullPath.fullPath;
-                listing.appendChild(item);
-            }) */
             function showTree(tree) {
-
                 tree.map((list) => {
                     let item = document.createElement('li');
                     item.textContent = list.fileName;
@@ -99,9 +104,7 @@ const dropHandler = (event) => {
                     } 
                 })
             }
-
-            //showTree(tree);
-            console.log("[Folder Structure]", tree);
+            showTree(tree);
         })
 }
 
@@ -140,9 +143,9 @@ const traverseDirectory = (entry) => {
 }
 
 const packageFile = (file, entry) => {
-    object =  {
+    let object =  {
         fileObject: file,
-        fullPath: entry.fullPath,
+        fullPath: !!entry ? entry.fullPath : '',
         lastModified: file.lastModified,
         lastModifiedDate: file.lastModifiedDate,
         name: file.name,
@@ -164,7 +167,9 @@ const getFile = (entry) => {
 const handleFilePromises = (promises, fileList) => {
     return Promise.all(promises).then((files) => {
         files.forEach((file) => {
-            fileList.push(file);
+            if (!ignoreFiles(file)) {
+                fileList.push(file);
+            }
         });
         return fileList;
     })
@@ -222,7 +227,9 @@ const getDroppedOrSelectedFiles = (event) => {
     const fileList = dragDropFileList || inputFieldFileList || [];
 
     for (let i = 0; i < fileList.length; i++) {
-        files.push(packageFile(fileList[i]));
+        if (!ignoreFiles(fileList[i])) {
+            files.push(packageFile(fileList[i]));
+        }
     }
 
     return Promise.resolve(files);
