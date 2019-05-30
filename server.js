@@ -23,7 +23,6 @@ app.post('/upload', (req, res) => {
     form.multiples = true;
     const params = {Bucket: 'aman.dev'};
     form.on('field', (name, value) => {
-        console.log(name,value);
         let metaData = JSON.parse(value);
         if (metaData.isFolder) {
             let path = metaData.fullPath ? metaData.fullPath : metaData.webkitRelativePath;
